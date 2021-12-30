@@ -6,6 +6,7 @@ from sklearn.metrics import confusion_matrix
 from invoiceGCN import InvoiceGCN
 import torch.nn.functional as F
 
+
 def load_train_test_split(save_fd):
     train_data = torch.load(os.path.join(save_fd, 'train_data.dataset'))
     test_data = torch.load(os.path.join(save_fd, 'test_data.dataset'))
@@ -24,10 +25,11 @@ train_data = train_data.to(device)
 test_data = test_data.to(device)
 
 # class weights for imbalanced data
-_class_weights = compute_class_weight(class_weight="balanced", classes=train_data.y.unique().cpu().numpy(), y=train_data.y.cpu().numpy())
+_class_weights = compute_class_weight(class_weight="balanced", classes=train_data.y.unique().cpu().numpy(),
+                                      y=train_data.y.cpu().numpy())
 print(_class_weights)
 
-no_epochs = 2000
+no_epochs = 1
 for epoch in range(1, no_epochs + 1):
     print(f'epoch: {epoch} \n')
     model.train()
@@ -65,7 +67,10 @@ for epoch in range(1, no_epochs + 1):
                     print(classification_report(y_true, y_pred))
 
             loss_val = F.nll_loss(model(test_data), test_data.y - 1
-            )
+                                  )
             fmt_log = "Epoch: {:03d}, train_loss:{:.4f}, val_loss:{:.4f}"
             print(fmt_log.format(epoch, loss, loss_val))
             print(">" * 50)
+
+
+    torch.save(model.state_dict(), './models/model.pt')

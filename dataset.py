@@ -8,15 +8,25 @@ from torch_geometric.utils.convert import from_networkx
 from bpemb import BPEmb
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm_notebook
+from transformers import AutoModel, AutoTokenizer
 
-bpemb_en = BPEmb(lang="en", dim=100)
+phobert = AutoModel.from_pretrained("vinai/phobert-base")
+tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base", use_fast=False)
+
+# bpemb_vi = BPEmb(lang="vi", dim=100)
 sent_model = SentenceTransformer('distilbert-base-nli-stsb-mean-tokens')
+# sent_model = SentenceTransformer('phobert-base')
 
-
+# Get emb của câu.
 def make_sent_bert_features(text):
     emb = sent_model.encode([text])[0]
     return emb
 
+def make_sent_vi_emb(text):
+    input_ids = torch.tensor([tokenizer.encode(text)])
+    with torch.no_grad():
+        features = phobert(input_ids)[1][0]
+    return features
 
 def get_data(save_fd):
     """
@@ -38,7 +48,8 @@ def get_data(save_fd):
     files = all_files.copy()
     random.shuffle(files)
 
-    """Resulting in 550 receipts for training"""
+
+    """Chọn 500 ảnh làm tập Train, còn lại là tập Test"""
     training, testing = files[:550], files[550:]
 
     for file in tqdm_notebook(all_files):
@@ -62,14 +73,21 @@ def get_data(save_fd):
             except AttributeError as e:
                 pass
 
+        # df['labels'] = df['labels'].fillna('undefined')
+        # df.loc[df['labels'] == 'company', 'num_labels'] = 1
+        # df.loc[df['labels'] == 'address', 'num_labels'] = 2
+        # df.loc[df['labels'] == 'date', 'num_labels'] = 3
+        # df.loc[df['labels'] == 'total', 'num_labels'] = 4
+        # df.loc[df['labels'] == 'undefined', 'num_labels'] = 5
+        # df.loc[df['labels'] == 'invoice', 'num_labels'] = 5
+
+        # VietNam dataset
         df['labels'] = df['labels'].fillna('undefined')
-        df.loc[df['labels'] == 'company', 'num_labels'] = 1
-        df.loc[df['labels'] == 'address', 'num_labels'] = 2
-        df.loc[df['labels'] == 'date', 'num_labels'] = 3
-        df.loc[df['labels'] == 'total', 'num_labels'] = 4
-        df.loc[df['labels'] == 'undefined', 'num_labels'] = 5
-        df.loc[df['labels'] == 'invoice', 'num_labels'] = 5
-        print(file)
+        df.loc[df['labels'] == 'SELLER', 'num_labels'] = 1
+        df.loc[df['labels'] == 'TIMESTAMP', 'num_labels'] = 2
+        df.loc[df['labels'] == 'ADDRESS', 'num_labels'] = 3
+        df.loc[df['labels'] == 'TOTAL_COST', 'num_labels'] = 4
+        df.loc[df['labels'] == 'OTHER', 'num_labels'] = 5
 
         assert df[
                    'num_labels'].isnull().values.any() == False, f'labeling error! Invalid label(s) present in {file}.csv'
@@ -96,4 +114,4 @@ def get_data(save_fd):
     torch.save(test_data, os.path.join(save_fd, 'test_data.dataset'))
 
 
-get_data(save_fd="./dataset/SROIE_2019-20211208T073016Z-001/SROIE_2019/processed")
+get_data(save_fd="/home/nguyen_phuc_toan/Desktop/GraphConvolutionNetwork/dataset/Vietnamese")
